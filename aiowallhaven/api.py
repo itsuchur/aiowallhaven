@@ -117,7 +117,7 @@ class WallHavenAPI(object):
                 case 'nsfw':
                     query_params["purity"] = 111
                 case _:
-                    return logging.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+                    return LOG.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
 
         if sorting is not None:
             if sorting in SORTING:
@@ -222,10 +222,3 @@ class WallHavenAPI(object):
                     return LOG.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
 
         return await self._get_method(f"collections" if query_params is None else f"collections?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
-
-        """"
-        url 
-        if username is not None:
-            return await self._get_method(f"collections/{username}")
-        else:
-            return await self._get_method(f"collections")"""
