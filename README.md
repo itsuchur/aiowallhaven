@@ -27,7 +27,3 @@ $ pip install aiowallhaven
 
 aiowallhaven is developed and distributed under the MIT 
 license.
-
-## Source code
-
-The project is hosted on [GitHub][https://github.com/itsuchur/aiowallhaven/].
