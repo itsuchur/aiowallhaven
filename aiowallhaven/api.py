@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import aiohttp
+import logging
+import re
+
+from typing import Dict
+from aiolimiter import AsyncLimiter
+
+logging.basicConfig(format='%(message)s', level=logging.INFO)
+
+LOG = logging.getLogger(__name__)
+VERSION = "v1"
+BASE_API_URL = f"https://wallhaven.cc/api/{VERSION}"
+RATE_LIMIT = AsyncLimiter(45, 60)   # max 45 API calls per 60 seconds according to https://wallhaven.cc/help/api
+TOPRANGE = ("1d", "3d", "1w", "1M", "3M", "6M", "1y")
+SORTING = ("date_added", "relevance", "random", "favorites", "toplist")
+
+
+class WallHavenAPI(object):
+    __slots__ = ("api_key")
+    """Base API Class
+
+    API documentation is available at https://wallhaven.cc/help/api
+    
+    Attributes:
+
+        self.api_key = an API Key provided by Wallhaven. If you don't have one get yours at https://wallhaven.cc/settings/account
+        self.session = an aiohttp.ClientSession instance
+    """
+
+    def __init__(self, api_key):
+        self.api_key: str = api_key
+
+    async def _get_method(self, url) -> Dict:
+        """Make an async GET request to https://wallhaven.cc
+        
+        Args:
+            url = request url
+
+        Raises:
+            Exception: if exception happens =(
+        
+        Returns:
+            JSON"""
+
+        headers = {
+            "X-API-key": f"{self.api_key}",
+        }
+
+        async with RATE_LIMIT:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{BASE_API_URL}/{url}", headers=headers) as session:
+                    if session.status == 200:
+                        LOG.info(f"Succesfully completed API call: {session}.")
+                        return await session.json()
+                    elif session.status == 401:
+                        return LOG.error(f"Invalid API key. Please provide a valid API key. You can regenerate your API key at https://wallhaven.cc/settings/account")
+                    else:
+                        raise Exception(f"The request to open {session} failed with the following HTTP code: {session.status}")
+
+    async def get_wallpaper(self, wallpaper_id: str):
+        url = f"w/{wallpaper_id}"
+        return await self._get_method(url)
+
+    async def search(self,
+                     q = None,
+                     categories: str = None,
+                     purity: str = None,
+                     sorting: str = None,
+                     order: str = None,
+                     toprange: str = None,
+                     atleast: str = None,
+                     resolutions: list = None,
+                     ratios: list = None,
+                     colors: str = None,
+                     page: str = None,
+                     seed: str = None):
+        """Perform search through Wallhaven. With no additional parameters the search will display the latest SFW wallpapers
+        Args:
+            q - Search query - Your main way of finding what you're looking for.
+            categories - Turn categories on(1) or off(0).
+            purity - Turn purities on(1) or off(0).
+            sorting - Method of sorting results.
+            order - Sorting order. Default order is desc.
+            toprange - Sorting MUST be set to 'toplist'.
+            atleast - Minimum resolution allowed.
+            resolution - List of exact wallpaper resolutions. Single resolution is allowed.
+            color - Search by color.
+            page - Pagination. Not actually infinite
+            seed - Optional seed for random results. Example: [a-zA-Z0-9]{6}.
+        Returns:
+            JSON"""
+
+        query_params: dict = {}
+
+        if q is not None:
+            query_params["q"] = q
+
+        if categories is not None:
+            match categories:
+                case "general":
+                    query_params["categories"] = 100
+                case "anime":
+                    query_params["categories"] = 110
+                case 'people':
+                    query_params["categories"] = 111
+                case _:
+                    return logging.error("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
+
+        if purity is not None:
+            match purity:
+                case "sfw":
+                    query_params["purity"] = 100
+                case "sketchy":
+                    query_params["purity"] = 110
+                case 'nsfw':
+                    query_params["purity"] = 111
+                case _:
+                    return logging.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+
+        if sorting is not None:
+            if sorting in SORTING:
+                query_params["sorting"] = sorting
+            else:
+                return LOG.error('Invalid parameter was provided. Only "date_added", "relevance", "random", "favorites", "toplist" are considered to be valid arguments.')
+
+        if order is not None:
+            match order:
+                case "desc":
+                    query_params["order"] = "desc"
+                case "asc":
+                    query_params["order"] = "asc"
+                case _:
+                    return LOG.error("Invalid order method was provided. Only 'desc' and 'asc' are considered to be valid arguments.")
+
+        if toprange is not None:
+            if toprange in TOPRANGE:
+                query_params["toprange"] = toprange
+            else:
+                return LOG.error('Invalid parameter was provided. Only "1d", "3d", "1w", "1M", "3M", "6M", "1y" are considered to be valid arguments.')
+
+        if atleast is not None:
+            if re.search("^([0-9].*)x([1-9].*)$", atleast):
+                query_params["atleast"] = atleast 
+            else:
+                return LOG.error('Invalid screen resolution was provided. Valid formats: "1920x1080", "3080x2140" eg.')
+
+        if resolutions is not None:
+            if isinstance(resolutions, list):
+                for x in resolutions:
+                    if re.search("^([0-9].*)x([1-9].*)$", x):
+                        query_params["resolutions"] = "%2C".join(resolutions)
+                    else:
+                        return LOG.error("At least one of provided resolutions is incorrect.")
+            else:
+                return LOG.error("The argument is not a Python list. Valid format: ['1920x1080', '2560x1600']. Single resolution must be passed as a list as well: ['1920x1080'")
+
+        if ratios is not None:
+            if isinstance(ratios, list):
+                for x in ratios:
+                    if re.search("^[0-9]{0,2}x[0-9]{0,2}$", x):
+                        query_params["ratios"] = "%2C".join(ratios)
+                    else:
+                        return LOG.error("At least one of provided ratios is incorrect. Valid format: ['16x9'].")
+            else:
+                return LOG.error("The argument is not a Python list. Valid format: ['16x9', '16x10']. Single screen ratio must be passed as a list as well: ['16x9'].")
+        
+        if colors is not None:
+            query_params["colors"] = colors
+
+        if page is not None:
+            query_params["page"] = page
+
+        if seed is not None:
+            query_params["seed"] = seed
+
+        return await self._get_method(f"search" if query_params is None else f"search?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
+
+    async def get_tag(self, tag: str):
+        """Return the information about a tag.
+        Args:
+            tag - a tag to look for
+        Returns:
+            JSON"""
+        return await self._get_method(f"tag/{tag}")
+
+    async def my_settings(self):
+        """Allows the user to read their settings.
+        Args:
+            No args
+        Returns: JSON
+        """
+        return await self._get_method(f"settings")
+
+    async def get_collections(self, username: str = None, collection_id: int = None, purity: str = None):
+        """Allows the user to see their own or public collection.
+        Args:
+            username - an optional argument allowing the user to check other users' public collections.
+            collection_id - an optional argument to parse through user collection having the indicated ID
+            purity - an optional argument to choose purity of returned results (i.e. sfw, sketchy, nsfw)
+        Returns:
+            JSON"""
+
+        query_params: dict = {}
+
+        if username is not None:
+            query_params["username"] = username
+
+        if collection_id is not None:
+            query_params["collection_id"] = collection_id
+
+        if purity is not None:
+            match purity:
+                case "sfw":
+                    query_params["purity"] = 100
+                case "sketchy":
+                    query_params["purity"] = 110
+                case 'nsfw':
+                    query_params["purity"] = 111
+                case _:
+                    return LOG.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+
+        return await self._get_method(f"collections" if query_params is None else f"collections?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
+
+        """"
+        url 
+        if username is not None:
+            return await self._get_method(f"collections/{username}")
+        else:
+            return await self._get_method(f"collections")"""
