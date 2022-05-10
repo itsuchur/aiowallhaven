@@ -15,8 +15,9 @@ print(request)
 ## Prerequisites
 The following dependencies are required:
 
-- Python 3.7
+- Python 3.10
 - aiohttp library
+- aiolimiter library
 
 ## Installation
 

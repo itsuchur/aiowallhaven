@@ -26,7 +26,6 @@ class WallHavenAPI(object):
     Attributes:
 
         self.api_key = an API Key provided by Wallhaven. If you don't have one get yours at https://wallhaven.cc/settings/account
-        self.session = an aiohttp.ClientSession instance
     """
 
     def __init__(self, api_key):
@@ -52,7 +51,6 @@ class WallHavenAPI(object):
             async with aiohttp.ClientSession() as session:
                 async with session.get(f"{BASE_API_URL}/{url}", headers=headers) as session:
                     if session.status == 200:
-                        LOG.info(f"Succesfully completed API call: {session}.")
                         return await session.json()
                     elif session.status == 401:
                         return LOG.error(f"Invalid API key. Please provide a valid API key. You can regenerate your API key at https://wallhaven.cc/settings/account")
@@ -106,7 +104,7 @@ class WallHavenAPI(object):
                 case 'people':
                     query_params["categories"] = 111
                 case _:
-                    return logging.error("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
+                    return LOG.error("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
 
         if purity is not None:
             match purity:
