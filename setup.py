@@ -19,7 +19,7 @@ setuptools.setup(
         long_description=readme,
         long_description_content_type="text/markdown",
         url="https://github.com/itsuchur/aiowallhaven",
-        download_url = 'https://github.com/itsuchur/aiowallhaven/archive/refs/tags/0.0.1.tar.gz',
+        download_url = 'https://github.com/itsuchur/aiowallhaven/archive/refs/tags/0.0.2.tar.gz',
         packages=setuptools.find_packages(),
         classifiers=[
             'Programming Language :: Python :: 3 :: Only',
