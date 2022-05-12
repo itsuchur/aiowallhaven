@@ -12,7 +12,7 @@ with open(str(_ROOT / 'README.md')) as f:
 
 setuptools.setup(
         name="aiowallhaven",
-        version="0.0.2",
+        version="0.0.3",
         author="Dmitrii Efimov",
         author_email="efimov.1992@outlook.com",
         description="Async wrapper for Wallhaven's API",
