@@ -3,7 +3,7 @@ import pathlib
 import sys
 
 if sys.version_info < (3, 10):
-    raise RuntimeError('aiowallhaven requires Python 3.6 or greater')
+    raise RuntimeError('aiowallhaven requires Python 3.10 or greater')
 
 _ROOT = pathlib.Path(__file__).parent
 
