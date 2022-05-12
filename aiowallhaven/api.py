@@ -4,17 +4,18 @@ import aiohttp
 import logging
 import re
 
-from typing import Dict
+from typing import Dict, Union
 from aiolimiter import AsyncLimiter
 
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 LOG = logging.getLogger(__name__)
 VERSION = "v1"
-BASE_API_URL = f"https://wallhaven.cc/api/{VERSION}"
+BASE_API_URL = f"https://wallhaven.cc/api"
 RATE_LIMIT = AsyncLimiter(45, 60)   # max 45 API calls per 60 seconds according to https://wallhaven.cc/help/api
 TOPRANGE = ("1d", "3d", "1w", "1M", "3M", "6M", "1y")
 SORTING = ("date_added", "relevance", "random", "favorites", "toplist")
+COLORS = ("660000", "990000", "cc0000", "cc3333", "ea4c88", "993399", "663399", "333399", "0066cc", "0099cc", "66cccc", "77cc33", "669900", "336600", "666600", "999900", "cccc33", "ffff00", "ffcc33", "ff9900", "ff6600", "cc6633", "996633", "663300", "000000", "999999", "cccccc", "ffffff", "424153")
 
 
 class WallHavenAPI(object):
@@ -49,15 +50,20 @@ class WallHavenAPI(object):
 
         async with RATE_LIMIT:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{BASE_API_URL}/{url}", headers=headers) as session:
+                async with session.get(f"{BASE_API_URL}/{VERSION}/{url}", headers=headers) as session:
                     if session.status == 200:
                         return await session.json()
                     elif session.status == 401:
-                        return LOG.error(f"Invalid API key. Please provide a valid API key. You can regenerate your API key at https://wallhaven.cc/settings/account")
+                        raise aiohttp.web.HTTPUnauthorized(f"Invalid API key. Please provide a valid API key. You can regenerate your API key at https://wallhaven.cc/settings/account")
                     else:
-                        raise Exception(f"The request to open {session} failed with the following HTTP code: {session.status}")
+                        raise aiohttp.web.HTTPException(f"The request to open {session} failed with the following HTTP code: {session.status}")
 
     async def get_wallpaper(self, wallpaper_id: str):
+        """Get the details about wallpaper with given id.
+        Args:
+            wallpaper_id - string representing an unique id assigned to the wallpaper
+        Returns:
+            JSON"""
         url = f"w/{wallpaper_id}"
         return await self._get_method(url)
 
@@ -69,9 +75,9 @@ class WallHavenAPI(object):
                      order: str = None,
                      toprange: str = None,
                      atleast: str = None,
-                     resolutions: list = None,
-                     ratios: list = None,
-                     colors: str = None,
+                     resolutions: Union[str, list] = None,
+                     ratios: Union[str, list] = None,
+                     colors: Union[str, int, list] = None,
                      page: str = None,
                      seed: str = None):
         """Perform search through Wallhaven. With no additional parameters the search will display the latest SFW wallpapers
@@ -104,7 +110,7 @@ class WallHavenAPI(object):
                 case 'people':
                     query_params["categories"] = 111
                 case _:
-                    return LOG.error("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
+                    raise ValueError("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
 
         if purity is not None:
             match purity:
@@ -115,13 +121,12 @@ class WallHavenAPI(object):
                 case 'nsfw':
                     query_params["purity"] = 111
                 case _:
-                    return LOG.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
 
-        if sorting is not None:
-            if sorting in SORTING:
+        if sorting is not None and sorting in SORTING:
                 query_params["sorting"] = sorting
-            else:
-                return LOG.error('Invalid parameter was provided. Only "date_added", "relevance", "random", "favorites", "toplist" are considered to be valid arguments.')
+        else:
+            raise ValueError('Invalid parameter was provided. Only "date_added", "relevance", "random", "favorites", "toplist" are considered to be valid arguments.')
 
         if order is not None:
             match order:
@@ -130,39 +135,45 @@ class WallHavenAPI(object):
                 case "asc":
                     query_params["order"] = "asc"
                 case _:
-                    return LOG.error("Invalid order method was provided. Only 'desc' and 'asc' are considered to be valid arguments.")
+                    raise ValueError("Invalid order method was provided. Only 'desc' and 'asc' are considered to be valid arguments.")
 
-        if toprange is not None:
-            if toprange in TOPRANGE:
-                query_params["toprange"] = toprange
-            else:
-                return LOG.error('Invalid parameter was provided. Only "1d", "3d", "1w", "1M", "3M", "6M", "1y" are considered to be valid arguments.')
+        if toprange is not None and toprange in TOPRANGE:
+            query_params["toprange"] = toprange
+        else:
+            raise ValueError('Invalid parameter was provided. Only "1d", "3d", "1w", "1M", "3M", "6M", "1y" are considered to be valid arguments.')
 
         if atleast is not None:
             if re.search("^([0-9].*)x([1-9].*)$", atleast):
-                query_params["atleast"] = atleast 
+                query_params["atleast"] = atleast
             else:
-                return LOG.error('Invalid screen resolution was provided. Valid formats: "1920x1080", "3080x2140" eg.')
+                raise ValueError('Invalid screen resolution was provided. Valid formats: "1920x1080", "3080x2140" eg.')
 
         if resolutions is not None:
+            if isinstance(resolutions, str):
+                query_params["resolutions"] = resolutions
             if isinstance(resolutions, list):
                 for x in resolutions:
                     if re.search("^([0-9].*)x([1-9].*)$", x):
                         query_params["resolutions"] = "%2C".join(resolutions)
                     else:
-                        return LOG.error("At least one of provided resolutions is incorrect.")
+                        raise ValueError("At least one of provided resolutions is incorrect.")
             else:
-                return LOG.error("The argument is not a Python list. Valid format: ['1920x1080', '2560x1600']. Single resolution must be passed as a list as well: ['1920x1080'")
+                raise ValueError("The argument neither a Python list nor string. Valid format: ['1920x1080', '2560x1600']. Single screen ratio can be passed a string: ['1920x1080'")
 
         if ratios is not None:
+            if isinstance(ratios, str):
+                if re.search("^[0-9]{0,2}x[0-9]{0,2}$", ratios):
+                    query_params["ratios"] = ratios
+                else:
+                    raise ValueError("The provided ratio is incorrect. Example of a valid format: '16x9'")
             if isinstance(ratios, list):
                 for x in ratios:
                     if re.search("^[0-9]{0,2}x[0-9]{0,2}$", x):
                         query_params["ratios"] = "%2C".join(ratios)
                     else:
-                        return LOG.error("At least one of provided ratios is incorrect. Valid format: ['16x9'].")
+                        raise ValueError("At least one of provided ratios is incorrect. Valid format: ['16x9', 16x10].")
             else:
-                return LOG.error("The argument is not a Python list. Valid format: ['16x9', '16x10']. Single screen ratio must be passed as a list as well: ['16x9'].")
+                raise ValueError("The argument neither a Python list nor string. Valid format: ['16x9', '16x10']. Single screen ratio can be passed a string: '16x9'.")
         
         if colors is not None:
             query_params["colors"] = colors
@@ -217,6 +228,6 @@ class WallHavenAPI(object):
                 case 'nsfw':
                     query_params["purity"] = 111
                 case _:
-                    return LOG.error("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
 
         return await self._get_method(f"collections" if query_params is None else f"collections?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
