@@ -6,10 +6,17 @@ wallpaper hosting site wallhaven.cc.
 ## Basic Usage:
 
 ```
+import asyncio
 from aiowallhaven import WallHavenAPI
 
-request = await WallHavenAPI("Your-API-key").get_wallpaper("5758y8")
-print(request)
+wallhaven = WallHavenAPI("Your-API-key")
+
+async def wallpaper_details():
+    request = await wallhaven.get_wallpaper("5758y8")
+    print(request)
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(wallpaper_details())
 ```
 
 ## Prerequisites
