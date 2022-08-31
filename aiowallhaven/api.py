@@ -15,7 +15,13 @@ BASE_API_URL = f"https://wallhaven.cc/api"
 RATE_LIMIT = AsyncLimiter(45, 60)   # max 45 API calls per 60 seconds according to https://wallhaven.cc/help/api
 TOPRANGE = ("1d", "3d", "1w", "1M", "3M", "6M", "1y")
 SORTING = ("date_added", "relevance", "random", "favorites", "toplist")
-COLORS = ("660000", "990000", "cc0000", "cc3333", "ea4c88", "993399", "663399", "333399", "0066cc", "0099cc", "66cccc", "77cc33", "669900", "336600", "666600", "999900", "cccc33", "ffff00", "ffcc33", "ff9900", "ff6600", "cc6633", "996633", "663300", "000000", "999999", "cccccc", "ffffff", "424153")
+COLORS = (
+        "660000", "990000", "cc0000", "cc3333", "ea4c88", "993399", "663399",
+        "333399", "0066cc", "0099cc", "66cccc", "77cc33", "669900", "336600",
+        "666600", "999900", "cccc33", "ffff00", "ffcc33", "ff9900", "ff6600",
+        "cc6633", "996633", "663300", "000000", "999999", "cccccc", "ffffff",
+        "424153"
+)
 
 
 class WallHavenAPI(object):
@@ -23,7 +29,7 @@ class WallHavenAPI(object):
     """Base API Class
 
     API documentation is available at https://wallhaven.cc/help/api
-    
+
     Attributes:
 
         self.api_key = an API Key provided by Wallhaven. If you don't have one get yours at https://wallhaven.cc/settings/account
@@ -34,13 +40,13 @@ class WallHavenAPI(object):
 
     async def _get_method(self, url) -> Dict:
         """Make an async GET request to https://wallhaven.cc
-        
+
         Args:
             url = request url
 
         Raises:
             Exception: if exception happens =(
-        
+
         Returns:
             JSON"""
 
@@ -98,10 +104,10 @@ class WallHavenAPI(object):
 
         query_params: dict = {}
 
-        if q is not None:
+        if (q):
             query_params["q"] = q
 
-        if categories is not None:
+        if (categories):
             match categories:
                 case "general":
                     query_params["categories"] = 100
@@ -112,7 +118,7 @@ class WallHavenAPI(object):
                 case _:
                     raise ValueError("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
 
-        if purity is not None:
+        if (purity):
             match purity:
                 case "sfw":
                     query_params["purity"] = 100
@@ -123,12 +129,13 @@ class WallHavenAPI(object):
                 case _:
                     raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
 
-        if sorting is not None and sorting in SORTING:
+        if (sorting):
+            if (sorting in SORTING):
                 query_params["sorting"] = sorting
-        else:
-            raise ValueError('Invalid parameter was provided. Only "date_added", "relevance", "random", "favorites", "toplist" are considered to be valid arguments.')
+            else:
+                raise ValueError('Invalid parameter was provided. Only "date_added", "relevance", "random", "favorites", "toplist" are considered to be valid arguments.')
 
-        if order is not None:
+        if (order):
             match order:
                 case "desc":
                     query_params["order"] = "desc"
@@ -137,18 +144,19 @@ class WallHavenAPI(object):
                 case _:
                     raise ValueError("Invalid order method was provided. Only 'desc' and 'asc' are considered to be valid arguments.")
 
-        if toprange is not None and toprange in TOPRANGE:
-            query_params["toprange"] = toprange
-        else:
-            raise ValueError('Invalid parameter was provided. Only "1d", "3d", "1w", "1M", "3M", "6M", "1y" are considered to be valid arguments.')
+        if (toprange):
+            if (toprange in TOPRANGE):
+                query_params["toprange"] = toprange
+            else:
+                raise ValueError('Invalid parameter was provided. Only "1d", "3d", "1w", "1M", "3M", "6M", "1y" are considered to be valid arguments.')
 
-        if atleast is not None:
+        if (atleast):
             if re.search("^([0-9].*)x([1-9].*)$", atleast):
                 query_params["atleast"] = atleast
             else:
                 raise ValueError('Invalid screen resolution was provided. Valid formats: "1920x1080", "3080x2140" eg.')
 
-        if resolutions is not None:
+        if (resolutions):
             if isinstance(resolutions, str):
                 query_params["resolutions"] = resolutions
             if isinstance(resolutions, list):
@@ -160,7 +168,7 @@ class WallHavenAPI(object):
             else:
                 raise ValueError("The argument neither a Python list nor string. Valid format: ['1920x1080', '2560x1600']. Single screen ratio can be passed a string: ['1920x1080'")
 
-        if ratios is not None:
+        if (ratios):
             if isinstance(ratios, str):
                 if re.search("^[0-9]{0,2}x[0-9]{0,2}$", ratios):
                     query_params["ratios"] = ratios
@@ -174,14 +182,14 @@ class WallHavenAPI(object):
                         raise ValueError("At least one of provided ratios is incorrect. Valid format: ['16x9', 16x10].")
             else:
                 raise ValueError("The argument neither a Python list nor string. Valid format: ['16x9', '16x10']. Single screen ratio can be passed a string: '16x9'.")
-        
-        if colors is not None:
+
+        if (colors):
             query_params["colors"] = colors
 
-        if page is not None:
+        if (page):
             query_params["page"] = page
 
-        if seed is not None:
+        if (seed):
             query_params["seed"] = seed
 
         return await self._get_method(f"search" if query_params is None else f"search?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
@@ -213,13 +221,13 @@ class WallHavenAPI(object):
 
         query_params: dict = {}
 
-        if username is not None:
+        if (username):
             query_params["username"] = username
 
-        if collection_id is not None:
+        if (collection_id):
             query_params["collection_id"] = collection_id
 
-        if purity is not None:
+        if (purity):
             match purity:
                 case "sfw":
                     query_params["purity"] = 100
