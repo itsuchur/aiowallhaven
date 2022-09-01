@@ -64,6 +64,38 @@ class WallHavenAPI(object):
                     else:
                         raise aiohttp.web.HTTPException(f"The request to open {session} failed with the following HTTP code: {session.status}")
 
+    async def _translate_purity_to_value(self, purity: list) -> str:
+        value = 0b000
+        for pur in purity:
+            match pur:
+                case "sfw":
+                    value |= 0b100
+                case "sketchy":
+                    value |= 0b010
+                case 'nsfw':
+                    value |= 0b001
+                case _:
+                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+        result = "{0:03b}".format(value)
+        return result
+
+    async def _translate_categories_to_value(self, categories: list):
+        value = 0b000
+        for category in categories:
+            match category:
+                case "general":
+                    value |= 0b100
+                case "anime":
+                    value |= 0b010
+                case 'people':
+                    value |= 0b001
+                case _:
+                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+        result = "{0:03b}".format(value)
+        return result
+
+
+
     async def get_wallpaper(self, wallpaper_id: str):
         """Get the details about wallpaper with given id.
         Args:
@@ -75,8 +107,8 @@ class WallHavenAPI(object):
 
     async def search(self,
                      q = None,
-                     categories: str = None,
-                     purity: str = None,
+                     categories: list = None,
+                     purity: list = None,
                      sorting: str = None,
                      order: str = None,
                      toprange: str = None,
@@ -108,26 +140,10 @@ class WallHavenAPI(object):
             query_params["q"] = q
 
         if (categories):
-            match categories:
-                case "general":
-                    query_params["categories"] = 100
-                case "anime":
-                    query_params["categories"] = 110
-                case 'people':
-                    query_params["categories"] = 111
-                case _:
-                    raise ValueError("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
+            query_params["categories"] = await self._translate_categories_to_value(categories)
 
         if (purity):
-            match purity:
-                case "sfw":
-                    query_params["purity"] = 100
-                case "sketchy":
-                    query_params["purity"] = 110
-                case 'nsfw':
-                    query_params["purity"] = 111
-                case _:
-                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+            query_params["purity"] = await self._translate_purity_to_value(purity)
 
         if (sorting):
             if (sorting in SORTING):
@@ -210,7 +226,7 @@ class WallHavenAPI(object):
         """
         return await self._get_method(f"settings")
 
-    async def get_collections(self, username: str = None, collection_id: int = None, purity: str = None):
+    async def get_collections(self, username: str = None, collection_id: int = None, purity: list = None):
         """Allows the user to see their own or public collection.
         Args:
             username - an optional argument allowing the user to check other users' public collections.
@@ -228,14 +244,6 @@ class WallHavenAPI(object):
             query_params["collection_id"] = collection_id
 
         if (purity):
-            match purity:
-                case "sfw":
-                    query_params["purity"] = 100
-                case "sketchy":
-                    query_params["purity"] = 110
-                case 'nsfw':
-                    query_params["purity"] = 111
-                case _:
-                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+            query_params["purity"] = self._translate_purity_to_value(purity)
 
         return await self._get_method(f"collections" if query_params is None else f"collections?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
