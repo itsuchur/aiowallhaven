@@ -1,6 +1,6 @@
 # aiowallhaven
 
-aiowallhaven is an asynchronous API wrapper for popular 
+aiowallhaven is an asynchronous API wrapper for popular
 wallpaper hosting site wallhaven.cc.
 
 ## Basic Usage:
@@ -33,5 +33,5 @@ $ pip install aiowallhaven
 ```
 ## License
 
-aiowallhaven is developed and distributed under the MIT 
+aiowallhaven is developed and distributed under the MIT
 license.
