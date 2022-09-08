@@ -90,7 +90,7 @@ class WallHavenAPI(object):
                 case 'people':
                     value |= 0b001
                 case _:
-                    raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
+                    raise ValueError("No valid category filter found. Only 'general', 'anime', and 'people' are considered to be valid category filters.")
         result = "{0:03b}".format(value)
         return result
 
