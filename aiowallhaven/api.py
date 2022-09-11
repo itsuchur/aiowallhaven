@@ -175,7 +175,7 @@ class WallHavenAPI(object):
         if (resolutions):
             if isinstance(resolutions, str):
                 query_params["resolutions"] = resolutions
-            if isinstance(resolutions, list):
+            elif isinstance(resolutions, list):
                 for x in resolutions:
                     if re.search("^([0-9].*)x([1-9].*)$", x):
                         query_params["resolutions"] = "%2C".join(resolutions)
