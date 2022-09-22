@@ -12,9 +12,9 @@ logging.basicConfig(format='%(message)s', level=logging.INFO)
 LOG = logging.getLogger(__name__)
 VERSION = "v1"
 BASE_API_URL = f"https://wallhaven.cc/api"
-RATE_LIMIT = AsyncLimiter(45, 60)   # max 45 API calls per 60 seconds according to https://wallhaven.cc/help/api
+RATE_LIMIT = AsyncLimiter(12, 60) # self tested new API limits
 TOPRANGE = ("1d", "3d", "1w", "1M", "3M", "6M", "1y")
-SORTING = ("date_added", "relevance", "random", "favorites", "toplist")
+SORTING = ("date_added", "relevance", "random", "views", "favorites", "toplist")
 COLORS = (
         "660000", "990000", "cc0000", "cc3333", "ea4c88", "993399", "663399",
         "333399", "0066cc", "0099cc", "66cccc", "77cc33", "669900", "336600",
@@ -37,6 +37,7 @@ class WallHavenAPI(object):
 
     def __init__(self, api_key):
         self.api_key: str = api_key
+
 
     async def _get_method(self, url) -> Dict:
         """Make an async GET request to https://wallhaven.cc
@@ -61,8 +62,13 @@ class WallHavenAPI(object):
                         return await session.json()
                     elif session.status == 401:
                         raise aiohttp.web.HTTPUnauthorized(f"Invalid API key. Please provide a valid API key. You can regenerate your API key at https://wallhaven.cc/settings/account")
+                    elif session.status == 404:
+                        raise aiohttp.web.HTTPNotFound(f"Requested page is not found")
+                    elif session.status == 429:
+                        raise aiohttp.web.HTTPTooManyRequests(f"Too many requests to the server, please try again later")
                     else:
                         raise aiohttp.web.HTTPException(f"The request to open {session} failed with the following HTTP code: {session.status}")
+
 
     async def _translate_purity_to_value(self, purity: list) -> str:
         value = 0b000
@@ -78,6 +84,7 @@ class WallHavenAPI(object):
                     raise ValueError("No valid purity filter found. Only 'sfw', 'sketchy', and 'nsfw' are considered to be valid purity filters.")
         result = "{0:03b}".format(value)
         return result
+
 
     async def _translate_categories_to_value(self, categories: list):
         value = 0b000
@@ -95,7 +102,6 @@ class WallHavenAPI(object):
         return result
 
 
-
     async def get_wallpaper(self, wallpaper_id: str):
         """Get the details about wallpaper with given id.
         Args:
@@ -104,6 +110,7 @@ class WallHavenAPI(object):
             JSON"""
         url = f"w/{wallpaper_id}"
         return await self._get_method(url)
+
 
     async def search(self,
                      q = None,
@@ -182,7 +189,7 @@ class WallHavenAPI(object):
                     else:
                         raise ValueError("At least one of provided resolutions is incorrect.")
             else:
-                raise ValueError("The argument neither a Python list nor string. Valid format: ['1920x1080', '2560x1600']. Single screen ratio can be passed a string: ['1920x1080'")
+                raise ValueError("The argument neither a Python list nor string. Valid format: ['1920x1080', '2560x1600']. Single screen ratio can be passed a string: '1920x1080'")
 
         if (ratios):
             if isinstance(ratios, str):
@@ -190,7 +197,7 @@ class WallHavenAPI(object):
                     query_params["ratios"] = ratios
                 else:
                     raise ValueError("The provided ratio is incorrect. Example of a valid format: '16x9'")
-            if isinstance(ratios, list):
+            elif isinstance(ratios, list):
                 for x in ratios:
                     if re.search("^[0-9]{0,2}x[0-9]{0,2}$", x):
                         query_params["ratios"] = "%2C".join(ratios)
@@ -210,13 +217,15 @@ class WallHavenAPI(object):
 
         return await self._get_method(f"search" if query_params is None else f"search?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
 
-    async def get_tag(self, tag: str):
+
+    async def get_tag(self, tag: int):
         """Return the information about a tag.
         Args:
             tag - a tag to look for
         Returns:
             JSON"""
         return await self._get_method(f"tag/{tag}")
+
 
     async def my_settings(self):
         """Allows the user to read their settings.
@@ -226,7 +235,10 @@ class WallHavenAPI(object):
         """
         return await self._get_method(f"settings")
 
-    async def get_collections(self, username: str = None, collection_id: int = None, purity: list = None):
+
+    async def get_collections(self, username: str = None,
+                                    collection_id: int = None,
+                                    purity: list = None):
         """Allows the user to see their own or public collection.
         Args:
             username - an optional argument allowing the user to check other users' public collections.
@@ -235,15 +247,22 @@ class WallHavenAPI(object):
         Returns:
             JSON"""
 
-        query_params: dict = {}
+        query_url = "collections"
 
         if (username):
-            query_params["username"] = username
+            query_url += '/' + username
 
         if (collection_id):
-            query_params["collection_id"] = collection_id
+            query_url += '/' + str(collection_id)
 
         if (purity):
-            query_params["purity"] = self._translate_purity_to_value(purity)
+            query_url += '?purity=' + await self._translate_purity_to_value(purity)
 
-        return await self._get_method(f"collections" if query_params is None else f"collections?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
+        return await self._get_method(query_url)
+
+
+    async def get_user_uploads(self, username,
+                                        purity=["sfw", "sketchy", "nsfw"],
+                                        page=1):
+        res = await self.search(q = f"@{username}", page=page, purity=purity)
+        return res
