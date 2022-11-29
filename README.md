@@ -34,7 +34,7 @@ $ pip install aiowallhaven
 
 ## Documentation
 
-The documentation is available at [readthedocks](https://aiowallhaven.readthedocs.io/en/latest/).
+The documentation is available at [readthedocs.io](https://aiowallhaven.readthedocs.io/en/latest/).
 
 ## License
 
