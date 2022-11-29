@@ -31,6 +31,11 @@ The following dependencies are required:
 ```
 $ pip install aiowallhaven
 ```
+
+## Documentation
+
+The documentation is available at [readthedocks](https://aiowallhaven.readthedocs.io/en/latest/).
+
 ## License
 
 aiowallhaven is developed and distributed under the MIT
