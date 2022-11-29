@@ -9,9 +9,12 @@ import aiohttp
 import aiohttp.web
 from aiolimiter import AsyncLimiter
 
-import api_exception_reasons as exception_reasons
+from . import api_exception_reasons as exception_reasons
 
-logging.basicConfig(format='%(message)s', level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
 
 LOG = logging.getLogger(__name__)
 VERSION = "v1"
@@ -30,30 +33,21 @@ COLORS = (
 
 class WallHavenAPI(object):
     __slots__ = "api_key"
-    """Base API Class
-
-    API documentation is available at https://wallhaven.cc/help/api
-
-    Attributes:
-
-        self.api_key = an API Key provided by Wallhaven. 
-        If you don't have one get yours at https://wallhaven.cc/settings/account
-    """
+    r"""Base API Class.
+        
+        :api_key: an API Key provided by Wallhaven. If you don't have one get yours at https://wallhaven.cc/settings/account.
+        """
 
     def __init__(self, api_key):
         self.api_key: str = api_key
 
     async def _get_method(self, url) -> Dict:
-        """Make an async GET request to https://wallhaven.cc
 
-        Args:
-            url = request url
-
-        Raises:
-            Exception: if exception happens =(
-
-        Returns:
-            JSON"""
+        r"""Make an async GET request to https://wallhaven.cc
+        
+        :param url: URL for the new :class:`aiohttp.ClientSession` object.
+        :return: :class: `JSON` object
+        """
 
         headers = {
             "X-API-key": f"{self.api_key}",
@@ -116,11 +110,12 @@ class WallHavenAPI(object):
         return result
 
     async def get_wallpaper(self, wallpaper_id: str):
-        """Get the details about wallpaper with given id.
-        Args:
-            wallpaper_id - string representing a unique id assigned to the wallpaper
-        Returns:
-            JSON"""
+        r"""Get the details about wallpaper with given id.
+        
+        :param wallpaper_id: a string representing a unique id assigned to the wallpaper.
+        :return: :class: `JSON` object
+        """
+
         url = f"w/{wallpaper_id}"
         return await self._get_method(url)
 
@@ -137,22 +132,19 @@ class WallHavenAPI(object):
                      colors: Union[str, int, list] = None,
                      page: str = None,
                      seed: str = None):
-        """Perform search through Wallhaven.
-        With no additional parameters the search will display the latest SFW wallpapers
-        Args:
-            q - Search query - Your main way of finding what you're looking for.
-            categories - Turn categories on(1) or off(0).
-            purity - Turn purities on(1) or off(0).
-            sorting - Method of sorting results.
-            order - Sorting order. Default order is desc.
-            toprange - Sorting MUST be set to 'toplist'.
-            atleast - Minimum resolution allowed.
-            resolution - List of exact wallpaper resolutions. Single resolution is allowed.
-            color - Search by color.
-            page - Pagination. Not actually infinite
-            seed - Optional seed for random results. Example: [a-zA-Z0-9]{6}.
-        Returns:
-            JSON"""
+        r"""Perform search through Wallhaven. If no additional parameters are set the search will display the latest SFW wallpapers.
+            :param q: Search query. Your main way of finding what you're looking for.
+            :param categories: (optional) Turn categories on(1) or off(0).
+            :param purity: (optional) Turn purities on(1) or off(0).
+            :param sorting: (optional) Method of sorting results.
+            :param order: (optional) Sorting order. Default order is desc.
+            :param toprange: (optional) Sorting MUST be set to 'toplist'.
+            :param atleast: (optional) Minimum resolution allowed.
+            :param resolution: (optional) List of exact wallpaper resolutions. Single resolution is allowed.
+            :param color: (optional) Search by color.
+            :param page: (optional) Pagination. Not actually infinite
+            :param seed: (optional) seed for random results. Example: [a-zA-Z0-9]{6}.
+        :return: :class: `JSON` object"""
 
         query_params: dict = {}
 
@@ -232,32 +224,29 @@ class WallHavenAPI(object):
             f"search" if not query_params else
             f"search?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
 
-    async def get_tag(self, tag: int):
-        """Return the information about a tag.
-        Args:
-            tag - a tag to look for
-        Returns:
-            JSON"""
+    async def get_tag(self, tag: int):    
+        r"""Return the information about a specific tag.
+        
+        :param tag: an integer associated with with a tag.
+        :return: :class: `JSON` object
+        """
         return await self._get_method(f"tag/{tag}")
 
     async def my_settings(self):
-        """Allows the user to read their settings.
-        Args:
-            No args
-        Returns: JSON
+        r"""Return the user's settings. No arguments are accepted.
+        
+        :return: :class: `JSON` object
         """
         return await self._get_method(f"settings")
 
     async def get_collections(self, username: str = None,
                               collection_id: int = None,
                               purity: list = None):
-        """Allows the user to see their own or public collection.
-        Args:
-            username - an optional argument allowing the user to check other users' public collections.
-            collection_id - an optional argument to parse through user collection having the indicated ID
-            purity - an optional argument to choose purity of returned results (i.e. sfw, sketchy, nsfw)
-        Returns:
-            JSON"""
+        r"""Allows the user to see their own or public collection.
+                :param username: - an optional argument allowing the user to check other users' public collections.
+                :param collection_id: - an optional argument to parse through user collection having the indicated ID.
+                :param purity: - an optional argument to choose purity of returned results (i.e. sfw, sketchy, nsfw).
+            :return: :class: `JSON` object"""
 
         query_url = "collections"
 
