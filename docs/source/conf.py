@@ -33,4 +33,4 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 
 # --- https://github.com/readthedocs/readthedocs.org/issues/2569 -----------------
-master_doc = 'index'
+root_doc = 'index'
