@@ -4,7 +4,7 @@ Usage
 .. _installation:
 
 Installation of aiowallhaven
-------------
+----------------------------
 
 To use aiowallhaven, first install it using pip:
 
@@ -15,7 +15,7 @@ To use aiowallhaven, first install it using pip:
 .. _getsource:
 
 Get the Source Code
-------------
+-------------------
 
 aiowallhaven is developed on Github. You can access the repository at anytime by `clicking this link <https://github.com/itsuchur/aiowallhaven>`_.
 

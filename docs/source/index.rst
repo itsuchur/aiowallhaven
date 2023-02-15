@@ -4,10 +4,10 @@
    contain the root `toctree` directive.
 
 aiowallhaven: a simple API
-========================================
+==========================
 
-**aiowallhaven** is a Python library for synchronically interact with https://wallhaven.cc API. It offers a *simple* and
-*intuitive* way to interact with the API.
+**aiowallhaven** is a Python library for synchronically interact with https://wallhaven.cc API.
+It offers a *simple* and *intuitive* way to interact with the API.
 
 -------------------
 
@@ -38,7 +38,7 @@ Check out the :doc:`api` section to learn more about the base class, functions a
    :caption: Contents:
 
 The User Guide
---------
+--------------
 
 .. toctree::
 

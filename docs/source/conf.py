@@ -25,12 +25,13 @@ templates_path = ['_templates']
 exclude_patterns = []
 
 
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
-html_static_path = ['_static']
+
+# There are no static assets yet
+# html_static_path = ['_static']
 
 # --- https://github.com/readthedocs/readthedocs.org/issues/2569 -----------------
 root_doc = 'index'
