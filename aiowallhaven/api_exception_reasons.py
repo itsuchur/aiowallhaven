@@ -41,7 +41,7 @@ ValueErrorToprange = '''
 
 ValueErrorAtleast = '''
     Invalid screen resolution was provided. 
-    Valid formats: "1920x1080", "3080x2140" eg.
+    Valid formats: Resolution(1920, 1080), Resolution(3080, 2140)
 '''
 
 ValueErrorResolutions = '''
@@ -50,17 +50,15 @@ ValueErrorResolutions = '''
 
 ValueErrorResolutionsFormat = '''
     The argument neither a Python list nor string. 
-    Valid format: ['1920x1080', '2560x1600']. 
-    Single screen ratio can be passed as a string: '1920x1080'
+    Valid format: [Resolution(1920, 1080), Resolution(2560x1600)]. 
 '''
 
 ValueErrorRatios = '''
     The provided ratio is incorrect. 
-    Example of a valid format: '16x9' or ['16x9']
+    Example of a valid format: Ratio(16, 9)
 '''
 
 ValueErrorRatiosFormat = '''
     The argument neither a Python list nor string. 
-    Valid format: ['16x9', '16x10']. 
-    Single screen ratio can be passed as a string: '16x9'.
+    Valid format: [Ratio(16, 9), Ratio(16, 10)]. 
 '''

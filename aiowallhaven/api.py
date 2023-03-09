@@ -175,7 +175,7 @@ class WallHavenAPI(object):
 
         if atleast:
             if not isinstance(atleast, Resolution):
-                raise ValueError(exception_reasons.ValueErrorResolutions)
+                raise ValueError(exception_reasons.ValueErrorAtleast)
             query_params["atleast"] = str(atleast)
 
         if resolutions:
