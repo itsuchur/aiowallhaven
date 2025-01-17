@@ -1,2 +1,2 @@
 aiohttp~=3.8.1
-aiolimiter~=1.0.0
+aiolimiter~=1.2.1
