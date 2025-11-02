@@ -11,6 +11,7 @@ name: Upload Python Package
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,7 +26,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        ref: main
+        fetch-depth: 0
         python-version: '3.12'
     - name: Install dependencies
       run: |
