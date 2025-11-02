@@ -4,8 +4,8 @@ import setuptools
 import pathlib
 import sys
 
-if sys.version_info < (3, 10):
-    raise RuntimeError('aiowallhaven requires Python 3.10 or greater')
+if sys.version_info < (3, 12):
+    raise RuntimeError('aiowallhaven requires Python 3.12 or greater')
 
 _ROOT = pathlib.Path(__file__).parent
 
@@ -25,10 +25,10 @@ setuptools.setup(
         packages=setuptools.find_packages(),
         classifiers=[
             'Programming Language :: Python :: 3 :: Only',
-            'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.12',
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
             ],
-        python_requires='>=3.10.0',
+        python_requires='>=3.12.0',
         license='MIT',
         )
