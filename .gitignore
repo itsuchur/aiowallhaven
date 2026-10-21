@@ -228,3 +228,6 @@ cython_debug/
 # IntelliJ IDEA
 .idea/
 *.iml
+
+# Local packaging tool cache
+.uv-cache/

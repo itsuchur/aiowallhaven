@@ -1,6 +1,5 @@
 import os
 import unittest
-import warnings  # disable some socket warnings
 from datetime import datetime as dt  # for "sorting" test
 
 from aiowallhaven.api import WallHavenAPI
@@ -8,29 +7,23 @@ from aiowallhaven.wallhaven_types import (
     Ratio, Resolution, Sorting, TopRange, Order, Color, Purity, Category)
 
 API_KEY = os.getenv("WALLHAVEN_API_KEY")
-if not API_KEY:
-    raise Exception("The wallhaven API key is required for this test.")
 
-api = WallHavenAPI(API_KEY)
 
 def get_wallpaper_datetime(date: str):
     return dt.strptime(date, "%Y-%m-%d %H:%M:%S")
 
 
+@unittest.skipUnless(API_KEY, "Set WALLHAVEN_API_KEY to run live API tests")
 class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
-    # Sometimes tests cause unclosed socket warnings
-    # I couldn't beat this yet, maybe something happens in _get_method of the API
-    # if you know the issue, please open pull request with possible decision
-    def setUp(self):
-        warnings.filterwarnings(
-            action="ignore",
-            message="unclosed",
-            category=ResourceWarning)
-        return super().setUp()
+    async def asyncSetUp(self):
+        self.api = WallHavenAPI(API_KEY)
+
+    async def asyncTearDown(self):
+        await self.api.close()
 
     async def test_query(self):
         target_query = "pool"
-        response = await api.search(q=target_query)
+        response = await self.api.search(q=target_query)
         query = response["meta"]["query"]
         self.assertEqual(query, target_query)
 
@@ -42,7 +35,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
         ]
 
         for category in all_categories:
-            response = await api.search(category=category)
+            response = await self.api.search(category=category)
             wallpapers = response["data"]
             for wallpaper in wallpapers:
                 self.assertIn(wallpaper["category"], category._get_active_names())
@@ -55,7 +48,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
         ]
 
         for purity in all_purity:
-            response = await api.search(purity=purity)
+            response = await self.api.search(purity=purity)
             wallpapers = response["data"]
             for wallpaper in wallpapers:
                 self.assertIn(wallpaper["purity"], purity._get_active_names())
@@ -63,7 +56,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
     async def test_sorting_date_added(self):
         target_sorting = Sorting.date_added
         target_order = Order.desc
-        response = await api.search(sorting=target_sorting, order=target_order)
+        response = await self.api.search(sorting=target_sorting, order=target_order)
 
         wallpapers = response["data"]
         previous_date = get_wallpaper_datetime(wallpapers[0]["created_at"])
@@ -75,7 +68,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
     async def test_sorting_views(self):
         target_sorting = Sorting.views
         target_order = Order.desc
-        response = await api.search(sorting=target_sorting, order=target_order)
+        response = await self.api.search(sorting=target_sorting, order=target_order)
         wallpapers = response["data"]
 
         previous_views = int(wallpapers[0][target_sorting.value])
@@ -86,13 +79,13 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_sorting_random(self):
         target_sorting = Sorting.random
-        result = await api.search(sorting=target_sorting)
+        result = await self.api.search(sorting=target_sorting)
         self.assertIsNotNone(result["meta"]["seed"])  # random set seed
 
     async def test_sorting_favorites(self):
         target_sorting = Sorting.favorites
         target_order = Order.desc
-        response = await api.search(sorting=target_sorting, order=target_order)
+        response = await self.api.search(sorting=target_sorting, order=target_order)
 
         wallpapers = response["data"]
         previous_favorites = int(wallpapers[0][target_sorting.value])
@@ -103,7 +96,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_at_least(self):
         target_at_least = Resolution(3000, 3000)
-        response = await api.search(atleast=target_at_least)
+        response = await self.api.search(atleast=target_at_least)
 
         wallpapers = response["data"]
         for wallpaper in wallpapers:
@@ -115,7 +108,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_resolution(self):
         target_resolution = [Resolution(1920, 1080)]
-        response = await api.search(resolutions=target_resolution)
+        response = await self.api.search(resolutions=target_resolution)
 
         wallpapers = response["data"]
         for wallpaper in wallpapers:
@@ -123,7 +116,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_ratios(self):
         target_ratio = Ratio(1, 1)
-        response = await api.search(ratios=[target_ratio])
+        response = await self.api.search(ratios=[target_ratio])
 
         wallpapers = response["data"]
         for wallpaper in wallpapers:
@@ -131,7 +124,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_color(self):
         target_color = Color.black
-        response = await api.search(color=target_color)
+        response = await self.api.search(color=target_color)
         wallpapers = response["data"]
 
         for wallpaper in wallpapers:
@@ -139,7 +132,7 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_page(self):
         target_page = 2
-        response = await api.search(q="anime", page=target_page)
+        response = await self.api.search(q="anime", page=target_page)
         self.assertEqual(target_page, int(response["meta"]["current_page"]))
 
     # ------------------------------ #
@@ -152,50 +145,45 @@ class ApiTestSearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_sorting_toplist(self):
         target_sorting = Sorting.toplist
-        response = await api.search(sorting=target_sorting)
+        response = await self.api.search(sorting=target_sorting)
         self.assertIsNotNone(response["data"])
 
     async def test_sorting_relevance(self):
         target_sorting = Sorting.relevance
-        response = await api.search(sorting=target_sorting)
+        response = await self.api.search(sorting=target_sorting)
         self.assertIsNotNone(response["data"])
 
     async def test_toprange(self):
         target_toprange = TopRange.one_day
-        response = await api.search("anime")
+        response = await self.api.search("anime", sorting=Sorting.toplist,
+                                         toprange=target_toprange)
         self.assertIsNotNone(response["data"])
 
-    # Something is completely wrong with seed values
-    # it seems that API just ignores it, because different seeds
-    # give same page of wallpapers (even with sorting=random)
     async def test_seed(self):
         target_seed = "abc123"
-        response = await api.search(seed=target_seed)
-        self.assertIsNotNone(response["data"])
+        response = await self.api.search(sorting=Sorting.random, seed=target_seed)
+        self.assertEqual(response["meta"]["seed"], target_seed)
 
 
+@unittest.skipUnless(API_KEY, "Set WALLHAVEN_API_KEY to run live API tests")
 class ApiTestGet(unittest.IsolatedAsyncioTestCase):
-    # Sometimes tests cause unclosed socket warnings
-    # I couldn't beat this yet, maybe something happens in _get_method of the API
-    # if you know the issue, please open pull request with possible decision
-    def setUp(self):
-        warnings.filterwarnings(
-            action="ignore",
-            message="unclosed",
-            category=ResourceWarning)
-        return super().setUp()
+    async def asyncSetUp(self):
+        self.api = WallHavenAPI(API_KEY)
+
+    async def asyncTearDown(self):
+        await self.api.close()
 
     async def test_get_collections(self):
         username = "Raylz"
         target_purity = Purity(sfw=True)
 
         # first - get all collections
-        response = await api.get_collections(username)
+        response = await self.api.get_collections(username)
 
         # if there is something in the list - take first collection
         if response["data"]:
             collection_id = response["data"][0]["id"]
-            response = await api.get_collections(username,
+            response = await self.api.get_collections(username,
                                                  collection_id,
                                                  purity=target_purity)
 
@@ -204,20 +192,20 @@ class ApiTestGet(unittest.IsolatedAsyncioTestCase):
                 self.assertIn(wallpaper["purity"], target_purity._get_active_names())
 
     async def test_get_tag(self):
-        res = await api.get_tag(1)
+        res = await self.api.get_tag(1)
         self.assertIsNotNone(res["data"])
 
     async def test_get_settings(self):
-        res = await api.my_settings()
+        res = await self.api.my_settings()
         self.assertIsNotNone(res["data"])
 
     async def test_get_user_uploads(self):
-        res = await api.get_user_uploads("provip")
+        res = await self.api.get_user_uploads("provip")
         self.assertIsNotNone(res["data"])
 
     async def test_get_wallpaper(self):
         test_wallpaper_id = "e7jj6r"
-        res = await api.get_wallpaper(test_wallpaper_id)
+        res = await self.api.get_wallpaper(test_wallpaper_id)
         self.assertEqual(res['data']['id'], test_wallpaper_id)
         self.assertIsNotNone(res["data"])
 

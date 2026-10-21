@@ -9,13 +9,13 @@
 project = 'aiowallhaven'
 copyright = '2022, Dmitrii Efimov, Roman Berezkin'
 author = 'Dmitrii Efimov, Roman Berezkin'
-release = '0.0.3'
+from importlib.metadata import version
+
+release = version('aiowallhaven')
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-import aiowallhaven
-print(dir(aiowallhaven))
 
 extensions = [
     "sphinx.ext.autodoc",

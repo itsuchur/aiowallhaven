@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import logging
-
-from http import HTTPStatus
 from typing import Dict
 
 import aiohttp
-import aiohttp.web
 from aiolimiter import AsyncLimiter
 
 from aiowallhaven import api_exception_reasons as exception_reasons
@@ -14,19 +10,11 @@ from aiowallhaven.wallhaven_types import (
     Purity, Category, Color, Order, Sorting, TopRange, Resolution, Ratio)
 
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)-8s %(message)s',
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S')
-
-LOG = logging.getLogger(__name__)
 VERSION = "v1"
 BASE_API_URL = "https://wallhaven.cc/api"
-RATE_LIMIT = AsyncLimiter(12, 60)  # self tested new API limits
 
 
 class WallHavenAPI(object):
-    __slots__ = "api_key"
     r"""
         Base API Class.
         :api_key: 
@@ -34,14 +22,30 @@ class WallHavenAPI(object):
             If you don't have one get yours at https://wallhaven.cc/settings/account.
     """
 
+    __slots__ = ("api_key", "_session", "_rate_limit")
+
     def __init__(self, api_key: str):
         self.api_key: str = api_key
+        self._session: aiohttp.ClientSession | None = None
+        self._rate_limit = AsyncLimiter(12, 60)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.close()
+
+    async def close(self):
+        """Close the connection pool. Use the client on a single event loop."""
+        if self._session is not None:
+            await self._session.close()
+            self._session = None
 
     async def _get_method(self, url: str, params: Dict = None) -> Dict:
         r"""
             Make an async GET request to https://wallhaven.cc
 
-            :param url: URL for the new :class:`aiohttp.ClientSession` object.
+            :param url: API endpoint relative to the versioned base URL.
             :param params: Additional parameters for get method
             :return: :class: `JSON` object
         """
@@ -53,30 +57,13 @@ class WallHavenAPI(object):
             "X-API-key": f"{self.api_key}",
         }
 
-        async with RATE_LIMIT:
-            async with aiohttp.ClientSession() as session:
-                req_url = f"{BASE_API_URL}/{VERSION}/{url}"
-                async with session.get(req_url, headers=headers, params=params) as response:
-                    status_code = response.status
-                    match status_code:
-                        case HTTPStatus.OK:
-                            return await response.json()
-
-                        case HTTPStatus.UNAUTHORIZED:
-                            raise aiohttp.web.HTTPUnauthorized(
-                                reason=exception_reasons.Unauthorized
-                            )
-
-                        case HTTPStatus.TOO_MANY_REQUESTS:
-                            raise aiohttp.web.HTTPTooManyRequests(
-                                reason=exception_reasons.TooManyRequests
-                            )
-
-                        case _:  # general error
-                            raise aiohttp.web.HTTPException(
-                                reason=exception_reasons.GeneralError.format(
-                                    session=session, status_code=status_code)
-                            )
+        async with self._rate_limit:
+            if self._session is None or self._session.closed:
+                self._session = aiohttp.ClientSession()
+            req_url = f"{BASE_API_URL}/{VERSION}/{url}"
+            async with self._session.get(req_url, headers=headers, params=params) as response:
+                response.raise_for_status()
+                return await response.json()
 
     @staticmethod
     async def _purity(pur: Purity) -> str:
@@ -186,7 +173,7 @@ class WallHavenAPI(object):
                 if not isinstance(res, Resolution):
                     raise ValueError(exception_reasons.ValueErrorResolutions)
 
-            query_params["resolutions"] = "%2C".join(str(x) for x in resolutions)
+            query_params["resolutions"] = ",".join(str(x) for x in resolutions)
 
         if ratios:
             if not isinstance(ratios, list):
@@ -196,7 +183,7 @@ class WallHavenAPI(object):
                 if not isinstance(rat, Ratio):
                     raise ValueError(exception_reasons.ValueErrorRatios)
 
-            query_params["ratios"] = "%2C".join(str(x) for x in ratios)
+            query_params["ratios"] = ",".join(str(x) for x in ratios)
 
         if color:
             query_params["colors"] = color.value
@@ -207,9 +194,7 @@ class WallHavenAPI(object):
         if seed:
             query_params["seed"] = seed
 
-        return await self._get_method(
-            f"search" if not query_params else
-            f"search?{'&'.join('{}={}'.format(*i) for i in query_params.items())}")
+        return await self._get_method("search", params=query_params)
 
     async def get_tag(self, tag: int):    
         r"""
@@ -259,10 +244,11 @@ class WallHavenAPI(object):
         if collection_id:
             query_url += '/' + str(collection_id)
 
+        params = {"page": page}
         if purity:
-            query_url += '?purity=' + await self._purity(purity)
+            params["purity"] = await self._purity(purity)
 
-        return await self._get_method(query_url, params={"page": page})
+        return await self._get_method(query_url, params=params)
 
     async def get_user_uploads(self,
                                username: str,
